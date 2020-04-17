@@ -1,99 +1,142 @@
-# Python Template Repository
+# monodepth
+Tensorflow implementation of unsupervised single image depth prediction using a convolutional neural network.
 
-This repository contains a fully-functionable package structure including (empty) tests.
+<p align="center">
+  <img src="http://visual.cs.ucl.ac.uk/pubs/monoDepth/monodepth_teaser.gif" alt="monodepth">
+</p>
 
-It's features include (but are not limited to):
-* An already working package structure
-* A working requirement handling
-* Minimal effort pypi releases
-* Pre-Configured CI/CD (With Travis)
-* Code coverage analysis
-* Python Code Style Checks
+**Unsupervised Monocular Depth Estimation with Left-Right Consistency**  
+[Clément Godard](http://www0.cs.ucl.ac.uk/staff/C.Godard/), [Oisin Mac Aodha](http://vision.caltech.edu/~macaodha/) and [Gabriel J. Brostow](http://www0.cs.ucl.ac.uk/staff/g.brostow/)  
+CVPR 2017
 
-> If you want to add something to this repo, please submit a PR. Contributions are very welcome.
+For more details:  
+[project page](http://visual.cs.ucl.ac.uk/pubs/monoDepth/)  
+[arXiv](https://arxiv.org/abs/1609.03677)
 
-## Customize it!
+## 🆕 Are you looking for monodepth2?
+> **Digging Into Self-Supervised Monocular Depth Estimation  
+> Clément Godard, Oisin Mac Aodha, Michael Firman and Gabriel J. Brostow**  
+>  
+> Improved accuracy, monocular training, and shorter training times!  
+>  
+> [arXiv](https://arxiv.org/abs/1806.01260) | [code](https://github.com/nianticlabs/monodepth2)
 
-To customize this repo, you need to have a look at the following chapters.
+## Requirements
+This code was tested with Tensorflow 1.0, CUDA 8.0 and Ubuntu 16.04.  
+Training takes about 30 hours with the default parameters on the **kitti** split on a single Titan X machine.  
+You can train on multiple GPUs by setting them with the `--num_gpus` flag, make sure your `batch_size` is divisible by `num_gpus`.
 
-### Directory-Name
-You might want to customize your package-name.
-
-To do this, you simply have to rename the `template-repo` directory to whatever you want.
- > Make sure, to also change it in [line 37 of your setup.py](setup.py#L37), or you won't be able to install your package anymore!
-
-### Python Package Metadata
-
-To customize your python package, you just have to change your `setup.py`.
-
-Currently the important part looks like 
-```python
-setup(
-    name='template_package',
-    version=_version,
-    packages=find_packages(),
-    url='https://github.com/justusschock/template-repo-python',
-    test_suite="unittest",
-    long_description=readme,
-    long_description_content_type='text/markdown',
-    install_requires=requirements,
-    tests_require=["coverage"],
-    python_requires=">=3.5",
-    author="Justus Schock",
-    author_email="justus.schock@rwth-aachen.de",
-    license=license,
-)
+## I just want to try it on an image!
+There is a simple mode `monodepth_simple.py` which allows you to quickly run our model on a test image.  
+Make sure your first [download one of the pretrained models](#models) in this example we will use `model_cityscapes`.
+```shell
+python monodepth_simple.py --image_path ~/my_image.jpg --checkpoint_path ~/models/model_cityscapes
 ```
-This includes the default information for me and must be adjusted to your needs:
+**Please note that there is NO extension after the checkpoint name**  
 
-* `name` provides the package-name you can later import
-* `version` provides the package-version (which will currently be extracted from your package's `__init__.py`, but be also set manually)
-* `packages` is a list defining all packages (and their sub-packages and the sub-packages of their sub-packages and so on...), that should be installed. This is automatically extracted by `find_packages`, which also accepts some sub-packages to ignore (besides some other arguments).
-`url` specifies the packages homepage (in this case the current GitHub repo); You might want to change it to your repos homepage.
-* `test_suite` defines the test-suite to use for your unittests. In this repo template, we'll python's built-in framework `unittest`, but you can change this too; *Just make sure to also change this, when we get to CI/CD.*
-* `long_description` does what it sayes: It provides a long description of your package. Currently this is parsed from your `README.md`
-* `long_description_content_type` defines your description type; I set it to markdown in most cases
-* `install_requires` is a list containing all your package requirements. They are automatically parsed from a `requirements.txt` file
-* `tests_require` does the same thing for your unittests.
-* `python_requires` specifies the python version, your package can be installed to (here it's been set to python 3.5 or above, since this is what I usually use). *Depending on the version you specify here, you might not be able to use all of python's latest features*
-* `author` and `author_email` specify who you are.
-* `license` specifies the license you want to release your code with. This is parsed from a `LICENSE` file.
+## Data
+This model requires rectified stereo pairs for training.  
+There are two main datasets available: 
+### [KITTI](http://www.cvlibs.net/datasets/kitti/raw_data.php)
+We used two different split of the data, **kitti** and **eigen**, amounting for respectively 29000 and 22600 training samples, you can find them in the [filenames](utils/filenames) folder.  
+You can download the entire raw dataset by running:
+```shell
+wget -i utils/kitti_archives_to_download.txt -P ~/my/output/folder/
+```
+**Warning:** it weights about **175GB**, make sure you have enough space to unzip too!  
+To save space you can convert the png images to jpeg.
+```shell
+find ~/my/output/folder/ -name '*.png' | parallel 'convert {.}.png {.}.jpg && rm {}'
+```
 
-There are still many other options to include here, but these are the most basic ones.
+### [Cityscapes](https://www.cityscapes-dataset.com)
+You will need to register in order to download the data, which already has a train/val/test set with 22973 training images.  
+We used `leftImg8bit_trainvaltest.zip`, `rightImg8bit_trainvaltest.zip`, `leftImg8bit_trainextra.zip` and `rightImg8bit_trainextra.zip` which weights **110GB**.
 
-### Unittests
-If you want to add/change some unit-tests, you should do this in a new python file starting with `test_`. [Here](https://docs.python.org/3/library/unittest.html) is a good introduction on how to write unittests with the `unittest` framework. After you added these tests, you may run them with either `coverage run -m unittest`or `python -m unittest`.
+## Training
 
-They are basically doing the same, but `coverage` additionally checks, how many of your code-lines are currently covered by your tests.
+**Warning:** The input sizes need to be mutiples of 128 for `vgg` or 64 for `resnet50` . 
 
-The unittests are also automatically triggered within [CI/CD](#cicd)
+The model's dataloader expects a data folder path as well as a list of filenames (relative to the root data folder):  
+```shell
+python monodepth_main.py --mode train --model_name my_model --data_path ~/data/KITTI/ \
+--filenames_file ~/code/monodepth/utils/filenames/kitti_train_files.txt --log_directory ~/tmp/
+```
+You can continue training by loading the last saved checkpoint using `--checkpoint_path` and pointing to it:  
+```shell
+python monodepth_main.py --mode train --model_name my_model --data_path ~/data/KITTI/ \
+--filenames_file ~/code/monodepth/utils/filenames/kitti_train_files.txt --log_directory ~/tmp/ \
+--checkpoint_path ~/tmp/my_model/model-50000
+```
+You can also fine-tune from a checkpoint using `--retrain`.  
+You can monitor the learning process using `tensorboard` and pointing it to your chosen `log_directory`.  
+By default the model only saves a reduced summary to save disk space, you can disable this using `--full_summary`.  
+Please look at the [main file](monodepth_main.py) for all the available options.
 
-### Specifying Codecov
-The [`.codecov.yml`](.codecov.yml) file specifies, how coverage should behave, how to calculate the coverage (i.e. what files to include for line counting) etc. 
+## Testing  
+To test change the `--mode` flag to `test`, the network will output the disparities in the model folder or in any other folder you specify wiht `--output_directory`.  
+You will also need to load the checkpoint you want to test on, this can be done with `--checkpoint_path`:  
+```shell
+python monodepth_main.py --mode test --data_path ~/data/KITTI/ \
+--filenames_file ~/code/monodepth/utils/filenames/kitti_stereo_2015_test_files.txt --log_directory ~/tmp/ \
+--checkpoint_path ~/tmp/my_model/model-181250
+```
+**Please note that there is NO extension after the checkpoint name**  
+If your test filenames contain two files per line the model will ignore the second one, unless you use the `--do_stereo` flag.
+The network will output two files `disparities.npy` and `disparities_pp.npy`, respecively for raw and post-processed disparities.
 
-### Requirements
-If you want to add new requirements, simply add them to the [`requirements.txt`](requirements.txt) file.
+## Evaluation on KITTI
+To evaluate run:  
+```shell
+python utils/evaluate_kitti.py --split kitti --predicted_disp_path ~/tmp/my_model/disparities.npy \
+--gt_path ~/data/KITTI/
+```
+The `--split` flag allows you to choose which dataset you want to test on.  
+* `kitti` corresponds to the 200 official training set pairs from [KITTI stereo 2015](http://www.cvlibs.net/datasets/kitti/eval_scene_flow.php?benchmark=stereo).  
+* `eigen` corresponds to the 697 test images used by [Eigen NIPS14](http://www.cs.nyu.edu/~deigen/depth/) and uses the raw LIDAR points.
 
-### Packaging on PyPi
-If you plan to release your package on pypi, ship wheels for it, you might need the [`MANSIFEST.in`](MANIFEST.in) file, since it specifies (among other things), which files to include to your binaries.
+**Warning**: The results on the Eigen split are usually cropped, which you can do by passing the `--garg_crop` flag.
 
-### Setup.cfg
-The [`setup.cfg`](setup.cfg) file currently only specifies, which directories to exclude from style checking.
+## Models
+You can download our pre-trained models to an existing directory by running:  
+```shell
+sh ./utils/get_model.sh model_name output_directory
+```
+All our models were trained for 50 epochs, 512x256 resolution and a batch size of 8, please see our paper for more details.  
+We converted KITTI and Cityscapes to jpeg before training.  
+Here are all the models available:
+* `model_kitti`: Our main model trained on the **kitti** split
+* `model_eigen`: Our main model trained on the **eigen** split
+* `model_cityscapes`: Our main model trained on **cityscapes**
+* `model_city2kitti`: `model_cityscapes` fine-tuned on **kitti**
+* `model_city2eigen`: `model_cityscapes` fine-tuned on **eigen**
+* `model_kitti_stereo`: Our stereo model trained on the **kitti** split for 12 epochs, make sure to use `--do_stereo` when using it
 
-### Gitignore
-The `.gitignore` file is a real life saver. It prevents files and directories that match certain patterns from being added to your git repository, when you push new stuff to it. You may append more specific patterns here.
+All our models, except for stereo, have a Resnet50 variant which you can get by adding `_resnet` to the model name.  
+To test or train using these variants, you need to use the flag `--encoder resnet50`.
 
-### CI/CD
-Now, we talked a lot about CI/CD. This repository uses [`travis`](https://travis-ci.com) as CI/CD and per default simply runs tests and style checks for your code.
+## Results
+You can download our results (unscaled disparities at 512x256) on both KITTI splits (**kitti** and **eigen**) [here](http://visual.cs.ucl.ac.uk/pubs/monoDepth/results/).  
+The naming convention is the same as with the models.
 
-To use this feature, you have to enable travis for your repository.
+## Reference
+If you find our work useful in your research please consider citing our paper:
+```
+@inproceedings{monodepth17,
+  title     = {Unsupervised Monocular Depth Estimation with Left-Right Consistency},
+  author    = {Cl{\'{e}}ment Godard and
+               Oisin {Mac Aodha} and
+               Gabriel J. Brostow},
+  booktitle = {CVPR},
+  year = {2017}
+}
+```
 
-#### YAMl-Specifications
-The [`.travis.yml`](.travis.yml) file specifies the CI/CD behavior. Currently it only runs tests and style-checks  with Python 3.7 on Linux Xenial. You may also include additional cases to the test matrix or add deployment (e.g. deploying your docs to GitHub Pages or similar stuff).
+## Video
+[![Screenshot](https://img.youtube.com/vi/go3H2gU-Zck/0.jpg)](https://www.youtube.com/watch?v=go3H2gU-Zck)
 
-#### Scripts
-The scripts used b CI/CD to install the requirements and run your tests are lying at [`scripts/ci`](scripts/ci).
-The file names indicate pretty well, what tey're doing. Of course you can customize them too.
+## License
+Copyright © Niantic, Inc. 2018. Patent Pending.
+All rights reserved.
 
-If you want Travis to automatically fix your code style where possible you have to add a github access token to travis, comment in the [lines 6-28](scripts/ci/run_style_checks.sh#L6-L28) and change the environment variable and the repository in [line 27](scripts/ci/run_style_checks.sh#L27).
-
+This Software is licensed under the terms of the UCLB ACP-A Licence which allows for non-commercial use only, the full terms of which are made available in the [LICENSE](LICENSE) file. For any other use of the software not covered by the terms of this licence, please contact info@uclb.com
