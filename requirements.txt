@@ -76,7 +76,7 @@ moveit-ros-planning-interface==0.9.17
 moveit-ros-visualization==0.9.17
 nbconvert==5.6.1
 nbformat==4.4.0
-notebook==6.0.2
+notebook==6.4.12
 numpy==1.17.4
 oauthlib==3.1.0
 openni2-launch==0.4.2
