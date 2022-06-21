@@ -77,7 +77,7 @@ moveit-ros-visualization==0.9.17
 nbconvert==5.6.1
 nbformat==4.4.0
 notebook==6.0.2
-numpy==1.17.4
+numpy==1.22.0
 oauthlib==3.1.0
 openni2-launch==0.4.2
 opt-einsum==3.1.0
